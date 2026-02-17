@@ -1,0 +1,32 @@
+# Python
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Data 
+data/raw/
+data/processed/
+data/final/
+*.csv
+*.xlsx
+*.zip
+*.tar.gz
+
+# Model & Results
+results/checkpoints/
+*.pth
+*.h5
+*.bin
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
