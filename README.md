@@ -131,4 +131,9 @@ IndoMeme-XAI bukan hanya sistem klasifikasi, tetapi fondasi menuju sistem modera
 * Adil
 * Transparan
 * Bertanggung jawab
+<<<<<<< HEAD
 * Kontekstual terhadap budaya Indonesia
+=======
+* Kontekstual terhadap budaya Indonesia
+
+>>>>>>> df3e1bf1651ede099729f1694d30a3558d1957f5
