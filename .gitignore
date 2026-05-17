@@ -1,31 +1,57 @@
 # Python
-venv/
 __pycache__/
 *.py[cod]
-*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Environment
 .env
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# Data 
-data/test/
-data/train/
-*.csv
-*.xlsx
-*.zip
-*.tar.gz
-
-# Model & Results
-results/checkpoints/
-*.pth
-*.h5
-*.bin
-
-# OS
-.DS_Store
-Thumbs.db
+.venv
+env/
+venv/
 
 # IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Data (too large for git — download via notebook)
+data/images/
+data/processed/*.csv
+!data/processed/.gitkeep
+
+# Model checkpoints (too large)
+models/
+checkpoints/
+*.pt
+*.pth
+*.bin
+
+# Kaggle
+kaggle.json
+
+# Temporary files
+*.tmp
+*.bak
+*.log
+unpacked_template/
+
+# Large generated files
+*.pdf
+!paper/*.pdf
+
+# Prompt files (internal use)
+PROMPT_*.md

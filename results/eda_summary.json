@@ -1,0 +1,64 @@
+{
+  "eda_date": "2026-04-27T05:17:50.545650",
+  "dataset": "aiatums/INDOMEME",
+  "split_sizes": {
+    "Train": 3415,
+    "Validation": 603,
+    "Test": 1005
+  },
+  "hate_rate_per_split": {
+    "Train": 34.35,
+    "Validation": 35.32,
+    "Test": 34.53
+  },
+  "hate_rate_per_topic": {
+    "political": 81.29,
+    "national origin": 78.03,
+    "individual": 69.92,
+    "institutions": 63.19,
+    "gender": 37.98,
+    "religion": 23.65,
+    "social sub-groups": 20.46,
+    "Unknown": 0.88
+  },
+  "ocr_stats_train": {
+    "mean_words": 14.33,
+    "median_words": 12.0,
+    "pct_empty": 0.0,
+    "p95_words": 35.0
+  },
+  "caption_stats_train": {
+    "mean_words": 18.12,
+    "median_words": 18.0,
+    "p95_words": 22.0
+  },
+  "combined_text_stats_train": {
+    "mean_words": 35.34,
+    "p95_words": 57.0,
+    "pct_est_over_512_tokens": 0.0
+  },
+  "topic_categories_8": [
+    "Gender",
+    "Individual",
+    "National Origin/Ethnicity/Race",
+    "Political",
+    "Religion",
+    "Institution/Company",
+    "Social Sub-groups",
+    "None/Others"
+  ],
+  "figures_saved": [
+    "01_label_distribution.png",
+    "02_topic_distribution.png",
+    "03_hate_per_topic.png",
+    "04_topic_hate_heatmap.png",
+    "05_ocr_length_distribution.png",
+    "06_wordcloud_ocr.png",
+    "07_caption_vs_ocr.png",
+    "08_image_dimensions.png",
+    "09_sample_memes.png",
+    "10_correlation_matrix.png",
+    "11_text_length_per_topic.png",
+    "12_topic_cooccurrence.png"
+  ]
+}

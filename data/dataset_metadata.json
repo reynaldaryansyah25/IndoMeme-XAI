@@ -1,0 +1,73 @@
+{
+  "dataset": "aiatums/INDOMEME",
+  "download_date": "2026-04-27T05:07:07.368763",
+  "splits": {
+    "train": {
+      "n_samples": 3415,
+      "hate_dist": {
+        "not hate": 2242,
+        "hate": 1173
+      },
+      "appropriate_dist": {
+        "appropriate": 1953,
+        "inappropriate": 1462
+      },
+      "csv_path": "D:\\PROYEK ML DAN AI\\IndoMeme-XAI\\data\\processed\\train.csv",
+      "parquet_path": "D:\\PROYEK ML DAN AI\\IndoMeme-XAI\\data\\raw\\train.parquet",
+      "images_dir": "D:\\PROYEK ML DAN AI\\IndoMeme-XAI\\data\\images\\train",
+      "n_images_saved": 3415
+    },
+    "validation": {
+      "n_samples": 603,
+      "hate_dist": {
+        "not hate": 390,
+        "hate": 213
+      },
+      "appropriate_dist": {
+        "appropriate": 334,
+        "inappropriate": 269
+      },
+      "csv_path": "D:\\PROYEK ML DAN AI\\IndoMeme-XAI\\data\\processed\\validation.csv",
+      "parquet_path": "D:\\PROYEK ML DAN AI\\IndoMeme-XAI\\data\\raw\\validation.parquet",
+      "images_dir": "D:\\PROYEK ML DAN AI\\IndoMeme-XAI\\data\\images\\validation",
+      "n_images_saved": 603
+    },
+    "test": {
+      "n_samples": 1005,
+      "hate_dist": {
+        "not hate": 658,
+        "hate": 347
+      },
+      "appropriate_dist": {
+        "appropriate": 572,
+        "inappropriate": 433
+      },
+      "csv_path": "D:\\PROYEK ML DAN AI\\IndoMeme-XAI\\data\\processed\\test.csv",
+      "parquet_path": "D:\\PROYEK ML DAN AI\\IndoMeme-XAI\\data\\raw\\test.parquet",
+      "images_dir": "D:\\PROYEK ML DAN AI\\IndoMeme-XAI\\data\\images\\test",
+      "n_images_saved": 1005
+    }
+  },
+  "columns": [
+    "idx",
+    "split",
+    "image_path",
+    "local_image_path",
+    "hate_final",
+    "appropriate_final",
+    "topic",
+    "topic_id",
+    "ocr",
+    "caption"
+  ],
+  "label_columns": [
+    "hate_final",
+    "appropriate_final"
+  ],
+  "task": "hate_speech_detection",
+  "primary_label": "hate_final",
+  "label_map": {
+    "not hate": 0,
+    "hate": 1
+  }
+}

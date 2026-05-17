@@ -1,139 +1,100 @@
-# 🛡️ IndoMeme-XAI
+# IndoMeme-XAI
 
-## Deteksi Multimodal Hate Speech dengan Explainable AI
+**Multimodal Hate Speech Detection in Indonesian Memes with Explainable AI Pipeline**
 
-**IndoMeme-XAI** adalah proyek riset kecerdasan buatan yang berfokus pada deteksi ujaran kebencian (*hate speech*) dalam bentuk meme — konten yang menggabungkan teks dan gambar — menggunakan pendekatan **Explainable AI (XAI)**.
+[![Python](https://img.shields.io/badge/Python-3.10-blue.svg)](https://python.org)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-red.svg)](https://pytorch.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Dataset](https://img.shields.io/badge/Dataset-INDOMEME-orange.svg)](https://huggingface.co/datasets/aiatums/INDOMEME)
 
-Proyek ini dirancang untuk menjawab tantangan moderasi konten digital di Indonesia dengan sistem yang tidak hanya akurat, tetapi juga transparan dan dapat dipertanggungjawabkan.
+## Overview
 
----
+IndoMeme-XAI is a multimodal framework that integrates cross-modal attention fusion with an Explainable AI (XAI) pipeline for detecting hate speech in Indonesian memes. The project systematically compares four fusion architectures and provides comprehensive interpretability analysis through four attribution methods.
 
-## 📝 Latar Belakang
+### Key Results
 
-Di era media sosial, ujaran kebencian tidak lagi disampaikan secara eksplisit melalui teks saja. Meme sering digunakan untuk menyamarkan:
+| Variant | Macro-F1 | AUC |
+|---------|----------|-----|
+| A — Late Fusion (baseline) | 0.7912 | 0.8827 |
+| B — Single Cross-Attention | 0.7814 | 0.8768 |
+| **C — ICAM Three-Stream** | **0.7946** | **0.8841** |
+| D — No Topic Embedding | 0.7456 | 0.8330 |
 
-* Sarkasme
-* Penghinaan terselubung
-* Dehumanisasi kelompok tertentu
-* Simbol visual bermuatan ideologis
+Best ensemble (5 seeds): **Macro-F1 = 0.8076**, ROC-AUC = 0.8875
 
-Model AI berbasis teks saja sering gagal memahami konteks visual tersebut. Oleh karena itu, dibutuhkan pendekatan **multimodal** yang mampu:
+### Key Findings
 
-* "Membaca" teks
-* "Melihat" gambar
-* Memahami hubungan semantik di antara keduanya
+1. **ICAM achieves best performance** — the three-stream fusion (bidirectional cross-attention + incongruity stream) marginally outperforms late fusion on INDOMEME (5,023 samples)
+2. **Topic information is critical** — removing topic embedding drops Macro-F1 by 4.9 percentage points, confirming strong topic-label correlation
+3. **Text dominance** — ROAR evaluation proves the model relies predominantly on textual features; Integrated Gradients is the only faithful attribution method, while all three visual methods operate at noise floor
 
-**IndoMeme-XAI** menggabungkan kedua modalitas ini untuk menghasilkan prediksi yang lebih akurat dan kontekstual.
+## Architecture
 
----
+```
+Input Meme
+    ├── Text:  [topic] caption [SEP] ocr  →  IndoBERTweet (124M params)
+    └── Image: 224×224 resize              →  ViT-Base (86M params)
+                                                    │
+                              ┌─────────────────────┤
+                              │   Fusion Module      │
+                              │   (4 variants)       │
+                              └─────────────────────┤
+                                                    │
+                              Topic Embedding (32-dim) ──┐
+                                                         │
+                              Classification Head ───────┘
+                              (800→256→2, GELU, dropout)
+                                        │
+                                  hate / not-hate
+```
 
-## 💡 Mengapa Explainable AI (XAI)?
+## Dataset
 
-Sebagian besar model Deep Learning bersifat *black box* — menghasilkan prediksi tanpa memberikan alasan yang jelas. Dalam konteks hukum dan moderasi konten, transparansi sangat penting.
+This project uses [INDOMEME](https://huggingface.co/datasets/aiatums/INDOMEME) — the first benchmark dataset for hate speech detection in Indonesian memes.
 
-Sistem ini menggunakan **Cross-Attention Mechanism** untuk:
+| Split | Hate | Not Hate | Total |
+|-------|------|----------|-------|
+| Train | 1,178 | 2,237 | 3,415 |
+| Validation | 208 | 395 | 603 |
+| Test | 347 | 658 | 1,005 |
 
-1. **Menunjukkan Bukti Visual**
-   Menghasilkan *heatmap* yang menandai area gambar paling berkontribusi terhadap klasifikasi.
+## Training Configuration
 
-2. **Menjelaskan Koneksi Semantik**
-   Memperlihatkan hubungan antara kata tertentu (misalnya penyebutan kelompok) dengan objek visual dalam meme.
+- **Encoders**: IndoBERTweet + ViT-Base (2 layers frozen each)
+- **Loss**: Focal Loss (γ=2.0) + Supervised Contrastive Loss (λ=0.3) with curriculum
+- **Optimizer**: AdamW with discriminative LR (encoder: 1e-5, fusion: 3e-5, head: 5e-5)
+- **Scheduler**: Cosine annealing with 10% warmup
+- **Batch size**: 64 effective (32 × 2 gradient accumulation)
+- **Hardware**: Kaggle T4×2, mixed precision (fp16)
 
-3. **Meningkatkan Transparansi**
-   Memberikan dasar rasional bagi moderator sebelum mengambil keputusan penghapusan konten.
+## XAI Pipeline
 
----
+Four attribution methods evaluated with ROAR faithfulness:
 
-## 🏗️ Arsitektur Teknologi
+| Method | Domain | Faithful? |
+|--------|--------|-----------|
+| Integrated Gradients | Text | Yes |
+| Cross-Attention Map | Image | No |
+| Attention Rollout | Image | No |
+| Incongruity Heatmap (novel) | Image | No (but class-discriminative) |
 
-Proyek ini mengintegrasikan dua model *state-of-the-art*:
+## Reproducibility
 
-### 🔤 Natural Language Processing (NLP)
+All experiments use fixed seeds (42, 123, 2024) for the ablation study and (42, 123, 2024, 7, 999) for ensemble. Notebooks are designed to run on Kaggle with T4 GPU.
 
-Menggunakan **IndoBERT** untuk memahami:
+```bash
+# Clone and install dependencies
+git clone https://github.com/YOUR_USERNAME/IndoMeme-XAI.git
+cd IndoMeme-XAI
+pip install -r requirements.txt
+```
+## License
 
-* Struktur bahasa Indonesia
-* Bahasa gaul
-* Konteks sosial media lokal
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
 
-### 🖼️ Computer Vision
+## Acknowledgments
 
-Menggunakan **Vision Transformer (ViT)** yang:
-
-* Membagi gambar menjadi *patch*
-* Mempelajari pola visual secara kontekstual
-
-### 🔀 Multimodal Fusion
-
-Menggabungkan teks dan gambar melalui:
-
-* *Attention Layer*
-* *Cross-Attention Mechanism*
-* Representasi fitur terpadu untuk klasifikasi akhir
-
----
-
-## 📁 Manajemen Data & Eksperimen
-
-Struktur proyek dirancang untuk menjaga integritas eksperimen dan replikasi riset:
-
-### 1️⃣ Data Acquisition
-
-* Pengambilan data dari platform media sosial Indonesia
-* Kurasi konten multimodal (teks + gambar)
-
-### 2️⃣ Annotation
-
-* Pelabelan manual
-* Pengawasan kualitas (*quality control*)
-* Validasi *ground truth*
-
-### 3️⃣ Experimentation Pipeline
-
-* Preprocessing lokal
-* Training skala besar di lingkungan cloud (Kaggle)
-* Evaluasi dan analisis interpretabilitas
-
----
-
-## 📊 Target dan Kontribusi
-
-Proyek ini menargetkan standar riset internasional dengan fokus pada:
-
-### ✅ Akurasi Tinggi
-
-Membedakan antara:
-
-* Kritik yang sah
-* Sarkasme
-* Ujaran kebencian eksplisit maupun implisit
-
-### 🔍 Interpretability
-
-Menghasilkan penjelasan visual yang:
-
-* Konsisten
-* Dapat dipahami manusia
-* Dapat digunakan sebagai bukti pendukung
-
-### 🌍 Dampak Sosial
-
-* Mendukung ekosistem digital Indonesia yang lebih sehat
-* Menjadi referensi teknologi moderasi berbasis AI
-* Berkontribusi pada pengembangan riset AI nasional
-
----
-
-## 🚀 Visi Proyek
-
-IndoMeme-XAI bukan hanya sistem klasifikasi, tetapi fondasi menuju sistem moderasi konten yang:
-
-* Adil
-* Transparan
-* Bertanggung jawab
-<<<<<<< HEAD
-* Kontekstual terhadap budaya Indonesia
-=======
-* Kontekstual terhadap budaya Indonesia
-
->>>>>>> df3e1bf1651ede099729f1694d30a3558d1957f5
+- [INDOMEME Dataset](https://huggingface.co/datasets/aiatums/INDOMEME) by Pamungkas et al. (2024)
+- [IndoBERTweet](https://huggingface.co/indolem/indobertweet-base-uncased) by Koto et al. (2021)
+- [Captum](https://captum.ai/) for Integrated Gradients implementation
+- Kaggle for GPU compute resources
