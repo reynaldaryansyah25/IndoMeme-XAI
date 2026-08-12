@@ -1,296 +1,217 @@
-<div align="center">
+Multimodal Fusion Architecture
 
-# IndoMeme-XAI
+Diagram berikut merepresentasikan alur model multimodal untuk klasifikasi hateful / not hateful. Model menerima teks, gambar, dan vektor topik, lalu membandingkan empat varian fusion: Late Fusion, Single Cross-Attention, ICAM, dan Without Topic.
 
-### A Controlled Study of Multimodal Fusion and Explainable AI Faithfulness for Indonesian Hateful Meme Detection
-
-[![Python](https://img.shields.io/badge/Python-3.10-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
-[![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-EE4C2C?style=flat-square&logo=pytorch&logoColor=white)](https://pytorch.org/)
-[![Dataset](https://img.shields.io/badge/Dataset-INDOMEME-F59E0B?style=flat-square)](https://huggingface.co/datasets/aiatums/INDOMEME)
-![Status](https://img.shields.io/badge/Status-Research-8B5CF6?style=flat-square)
-[![License](https://img.shields.io/badge/License-See%20LICENSE-22C55E?style=flat-square)](LICENSE)
-
-</div>
-
-## Overview
-
-**IndoMeme-XAI** is a controlled experimental study of multimodal fusion, topic dependence, and Explainable AI faithfulness for Indonesian hateful meme detection.
-
-The study fine-tunes **IndoBERTweet** and **Vision Transformer** encoders on 5,023 INDOMEME samples. It compares late fusion, single cross-attention, Incongruity-Aware Cross-Modal Attention, and a topic-ablated control.
-
-Beyond classification performance, the project audits whether the model relies on topic-label correlations, whether textual information dominates its decisions, and whether post-hoc explanations are faithful to model behavior.
-
-## Main Results
-
-| Variant | Fusion Mechanism | Topic | Macro-F1 | Hateful F1 | Hateful Recall | ROC-AUC | Threshold |
-|:--|:--|:--:|--:|--:|--:|--:|--:|
-| A | Late Fusion | Yes | 0.7912 ± 0.001 | 0.728 | 0.736 | 0.883 | 0.49 |
-| B | Single Cross-Attention | Yes | 0.7814 ± 0.005 | 0.713 | 0.709 | 0.877 | 0.50 |
-| **C** | **ICAM Three-Stream** | **Yes** | **0.7946 ± 0.004** | **0.726** | **0.699** | **0.884** | **0.55** |
-| D | Single Cross-Attention without Topic | No | 0.7456 ± 0.004 | 0.654 | 0.605 | 0.833 | 0.51 |
-| **C + Ensemble** | **Five-seed ICAM Ensemble** | **Yes** | **0.8076** | **0.741** | **0.700** | **0.8875** | **0.57** |
-
-The five-seed ICAM ensemble produced the strongest final result with a **Macro-F1 of 0.8076** and a **ROC-AUC of 0.8875**.
-
-## Key Findings
-
-**Fusion complexity**
-
-The main fusion variants produced relatively close results. ICAM achieved the highest single-model Macro-F1, but only slightly outperformed the late-fusion baseline.
-
-**Topic dependence**
-
-The topic-ablated control obtained a Macro-F1 of 0.7456, reported as a 4.9 percentage-point decrease relative to ICAM. This indicates strong topic dependence and potential shortcut learning through topic-label correlations.
-
-**Text dominance**
-
-ROAR evaluation showed that masking high-attribution text features produced more consistent performance degradation than random text masking.
-
-**Visual explanation faithfulness**
-
-Cross-Attention Map, Attention Rollout, and Incongruity Heatmap remained close to the random image-masking baseline. These methods are therefore interpreted as diagnostic visualizations rather than direct evidence of the features determining model decisions.
-
-## Research Workflow
-
-```mermaid
-flowchart TD
-    A["1. Dataset<br/>INDOMEME<br/>5,023 samples"] --> B["2. Data Preprocessing<br/>Text normalization<br/>Caption and OCR-like text<br/>Image resize 224 × 224"]
-
-    B --> C["3. Multimodal Representation<br/>IndoBERTweet<br/>ViT-Base<br/>Topic multi-hot embedding"]
-
-    C --> D["4. Fusion Variants<br/>Late Fusion<br/>Single Cross-Attention<br/>ICAM<br/>No-Topic Control"]
-
-    D --> E["5. Training and Validation<br/>Multi-seed training<br/>Threshold calibration<br/>Regularization<br/>Class weighting"]
-
-    E --> F["6. Best Model<br/>Five-seed ICAM Ensemble"]
-
-    F --> G["7A. Classification Evaluation<br/>Macro-F1<br/>ROC-AUC<br/>Classification report<br/>Confusion matrix"]
-
-    F --> H["7B. XAI and ROAR Evaluation<br/>Integrated Gradients<br/>Cross-Attention Map<br/>Attention Rollout<br/>Incongruity Heatmap"]
-
-    G --> I["8. Final Analysis<br/>Ablation results<br/>Topic analysis<br/>Text dominance<br/>XAI faithfulness<br/>Overall conclusions"]
-
-    H --> I
-```
-
-## Model Architecture
-
-```mermaid
 flowchart LR
-    M["Input Meme"] --> T["Text Input<br/>[topic] caption [SEP] ocr_cleaned"]
-    M --> V["Image Input<br/>224 × 224"]
+    %% ================================================================
+    %% INPUTS
+    %% ================================================================
+    subgraph INPUTS["INPUTS"]
+        direction TB
+        TEXT_IN["Text input<br/><small>‘[topic] caption [SEP]<br/>OCR-like text’</small>"]
+        IMAGE_IN["Image input<br/><small>224 × 224 image</small>"]
+        TOPIC_IN["Topic vector<br/><small>8-dim multi-hot</small>"]
+        TEXT_IN ~~~ IMAGE_IN ~~~ TOPIC_IN
+    end
 
-    T --> TE["IndoBERTweet"]
-    V --> VE["ViT-Base"]
+    %% ================================================================
+    %% ENCODERS
+    %% ================================================================
+    subgraph ENCODERS["ENCODERS"]
+        direction TB
+        TEXT_ENCODER["Text Encoder<br/><b>IndoBERTweet</b>"]
+        IMAGE_ENCODER["Image Encoder<br/><b>ViT-B/16</b>"]
+        TOPIC_PROJ["Topic Projection<br/><b>Linear 8 → 32</b>"]
+        TEXT_ENCODER ~~~ IMAGE_ENCODER ~~~ TOPIC_PROJ
+    end
 
-    TE --> A["A. Late Fusion"]
-    VE --> A
+    %% ================================================================
+    %% MULTIMODAL FUSION VARIANTS
+    %% ================================================================
+    subgraph FUSION["MULTIMODAL FUSION VARIANTS"]
+        direction TB
 
-    TE --> B["B. Single Cross-Attention"]
-    VE --> B
+        subgraph VARIANT_A["A. Late Fusion"]
+            direction LR
+            A_TEXT["Text CLS<br/>(768)"]
+            A_IMAGE["Image CLS<br/>(768)"]
+            A_CONCAT["Concat<br/><b>1536</b>"]
+            A_LINEAR["Linear<br/><b>1536 → 768</b>"]
+            A_FUSION["Fusion rep<br/><b>768</b>"]
 
-    TE --> C["C. ICAM Three-Stream"]
-    VE --> C
+            A_TEXT --> A_CONCAT
+            A_IMAGE --> A_CONCAT
+            A_CONCAT --> A_LINEAR --> A_FUSION
+        end
 
-    T --> TM["Topic Multi-Hot<br/>8 dimensions"]
-    TM --> TP["Topic Projection<br/>32 dimensions"]
+        subgraph VARIANT_B["B. Single Cross-Attention"]
+            direction LR
+            B_TEXT["Text CLS<br/>(768)"]
+            B_PATCHES["Image patches<br/><b>196 × 768</b>"]
+            B_CROSS["Cross-Attended<br/>image rep: 768"]
+            B_CONCAT["Concat with Text CLS<br/><b>1536</b>"]
+            B_LINEAR["Linear<br/><b>1536 → 768</b>"]
+            B_FUSION["Fusion rep<br/><b>768</b>"]
 
-    A --> H["Classification Head"]
-    B --> H
-    C --> H
-    TP --> H
+            B_TEXT -->|queries| B_PATCHES
+            B_PATCHES --> B_CROSS
+            B_TEXT --> B_CONCAT
+            B_CROSS --> B_CONCAT
+            B_CONCAT --> B_LINEAR --> B_FUSION
+        end
 
-    T0["Text without Topic<br/>caption [SEP] ocr_cleaned"] --> TE0["IndoBERTweet"]
-    TE0 --> D["D. Single Cross-Attention<br/>without Topic"]
-    VE --> D
-    D --> H
+        subgraph VARIANT_C["C. ICAM"]
+            direction LR
 
-    H --> O["Hateful / Not Hateful"]
-```
+            C_TEXT["Text CLS<br/>(768)"]
+            C_IMAGE["Image CLS<br/>(768)"]
 
-ICAM combines three information streams:
+            C_T2I["Text-to-Image<br/>Cross-Attention"]
+            C_I2T["Image-to-Text<br/>Cross-Attention"]
+            C_ZT2I["Z<sub>T2I</sub><br/>(768)"]
+            C_ZI2T["Z<sub>I2T</sub><br/>(768)"]
 
-| Stream | Function |
-|:--|:--|
-| Text-to-image attention | Allows text representations to attend to relevant visual patches |
-| Image-to-text attention | Allows visual representations to attend to relevant text tokens |
-| Incongruity stream | Models relative mismatch using cosine-similarity-based incongruity scores |
-| Learned gating | Combines cross-attention and incongruity representations |
+            C_CONCAT["Concat<br/><b>1536</b>"]
+            C_LINEAR["Linear<br/><b>1536 → 768</b>"]
+            C_ZCA["Z<sub>CA</sub><br/>(768)"]
 
-## Dataset
+            C_SIM["Token–Patch<br/>Cosine Similarity<br/><small>L × 196</small>"]
+            C_MISMATCH["Patch Mismatch<br/>Weighting"]
+            C_ZINC["Z<sub>INC</sub><br/>(768)"]
 
-The project uses the [INDOMEME](https://huggingface.co/datasets/aiatums/INDOMEME) dataset.
+            C_GATE["Feature-wise<br/>Gate"]
+            C_MULT(("⊗<br/><small>FW</small>"))
+            C_ZICAM["Z<sub>ICAM</sub><br/>(768)"]
 
-The official training split contains 4,018 samples. This study divides it into 3,415 training samples and 603 internal validation samples while preserving the official test set for final evaluation.
+            C_TEXT --> C_T2I --> C_ZT2I --> C_CONCAT
+            C_IMAGE --> C_I2T --> C_ZI2T --> C_CONCAT
+            C_CONCAT --> C_LINEAR --> C_ZCA --> C_MULT
 
-| Split | Hateful | Not Hateful | Total | Hateful Rate |
-|:--|--:|--:|--:|--:|
-| Train | 1,173 | 2,242 | 3,415 | 34.3% |
-| Validation | 213 | 390 | 603 | 35.3% |
-| Test | 347 | 658 | 1,005 | 34.5% |
-| **Total** | **1,733** | **3,290** | **5,023** | **34.5%** |
+            C_TEXT --> C_SIM
+            C_IMAGE --> C_SIM
+            C_SIM --> C_MISMATCH --> C_ZINC --> C_MULT
+            C_GATE -.-> C_MULT
+            C_MULT --> C_ZICAM
+        end
 
-### Dataset Inputs
+        subgraph VARIANT_D["D. Without Topic — no topic token / no topic embedding"]
+            direction LR
+            D_TEXT["Text CLS<br/>(768)"]
+            D_PATCHES["Image patches<br/><b>196 × 768</b>"]
+            D_CROSS["Cross-Attended<br/>image rep: 768"]
+            D_CONCAT["Concat with Text CLS<br/><b>1536</b>"]
+            D_LINEAR["Linear<br/><b>1536 → 768</b>"]
+            D_FUSION["Fusion rep<br/><b>768</b>"]
 
-| Column | Description | Usage |
-|:--|:--|:--|
-| `image` | Meme image | Visual input |
-| `image_path` | Original image filename | Sample identification |
-| `hate_final` | Hateful or not hateful label | Main classification target |
-| `appropriate_final` | Content appropriateness label | Not used as the main target |
-| `topic` | English topic annotation | Topic feature and ablation analysis |
-| `topic_id` | Indonesian topic annotation | Topic interpretation |
-| `ocr` | OCR-like representation generated using Qwen2-VL-2B | Text input |
-| `caption` | Formal description generated using Gemini 2.5 Flash | Text input |
+            D_TEXT -->|queries| D_PATCHES
+            D_PATCHES --> D_CROSS
+            D_TEXT --> D_CONCAT
+            D_CROSS --> D_CONCAT
+            D_CONCAT --> D_LINEAR --> D_FUSION
+        end
 
-The final text representation follows this format:
+        VARIANT_A ~~~ VARIANT_B ~~~ VARIANT_C ~~~ VARIANT_D
+    end
 
-```text
-[topic] caption [SEP] ocr_cleaned
-```
+    %% ================================================================
+    %% CLASSIFICATION HEADS
+    %% ================================================================
+    subgraph HEADS["CLASSIFICATION HEAD"]
+        direction TB
 
-Because captions transfer part of the visual content into the textual channel, text dominance in this study may reflect embedded meme text, OCR-like text, dataset-provided captions, and topic tokens.
+        subgraph HEAD_ABC["A / B / C"]
+            direction TB
+            H_FUSION["Fusion rep<br/><b>768</b>"]
+            H_TOPIC["Topic emb<br/><b>32</b>"]
+            H_CONCAT["Concat<br/><b>800</b>"]
+            H_MLP["MLP<br/><b>800 → 256 → 2</b>"]
+            H_SOFTMAX["Softmax"]
+            H_OUTPUT(["hateful /<br/>not hateful"])
 
-## Fusion Variants
+            H_FUSION --> H_CONCAT
+            H_TOPIC --> H_CONCAT
+            H_CONCAT --> H_MLP --> H_SOFTMAX --> H_OUTPUT
+        end
 
-| Variant | Mechanism | Topic Input | Evaluation Purpose |
-|:--|:--|:--:|:--|
-| A | Late Fusion | Yes | Simple multimodal baseline |
-| B | Single Cross-Attention | Yes | One-way text-image interaction |
-| C | ICAM Three-Stream | Yes | Bidirectional fusion and incongruity modeling |
-| D | Single Cross-Attention without Topic | No | Topic-dependence control |
+        subgraph HEAD_D["D. Without Topic"]
+            direction TB
+            HD_FUSION["Fusion rep<br/><b>768</b>"]
+            HD_MLP["MLP<br/><b>768 → 256 → 2</b>"]
+            HD_SOFTMAX["Softmax"]
+            HD_OUTPUT(["hateful /<br/>not hateful"])
 
-## Experimental Setup
+            HD_FUSION --> HD_MLP --> HD_SOFTMAX --> HD_OUTPUT
+        end
 
-| Component | Configuration |
-|:--|:--|
-| Text encoder | IndoBERTweet |
-| Image encoder | ViT-Base |
-| Optimizer | AdamW |
-| Weight decay | 0.01 |
-| Encoder learning rate | 1e-5 |
-| Fusion learning rate | 3e-5 |
-| Classification-head learning rate | 5e-5 |
-| Scheduler | 10% warmup with learning-rate scheduling |
-| Effective batch size | 64 using 32 × 2 gradient accumulation |
-| Main objective | Focal Loss and Supervised Contrastive Loss |
-| Label smoothing | 0.1 |
-| Regularization | Dropout and R-Drop |
-| Gradient clipping | 1.0 |
-| Early stopping | Patience of 5 |
-| Threshold calibration | Validation grid search from 0.40 to 0.65 |
-| Final ensemble | Average softmax probabilities from five seeds |
 
-Macro-F1 is used as the primary evaluation metric because the dataset is class-imbalanced. Supporting metrics include ROC-AUC, Weighted-F1, accuracy, precision, recall, and per-class F1-score.
+        HEAD_ABC ~~~ HEAD_D
+    end
 
-## XAI and Faithfulness Evaluation
+    %% ================================================================
+    %% MAIN STAGE FLOW
+    %% ================================================================
+    INPUTS -->|"text · image · topic"| ENCODERS
+    ENCODERS -->|"Text CLS / tokens · Image CLS / patches"| FUSION
+    FUSION -->|"A/B/C: fusion 768 + topic 32<br/>D: fusion 768 only"| HEADS
 
-```mermaid
-flowchart LR
-    A["Representative Model Checkpoint"] --> B["Attribution Generation"]
+    %% ================================================================
+    %% COLOR SYSTEM
+    %% ================================================================
+    classDef textNode fill:#EFF6FF,stroke:#2563EB,color:#111827,stroke-width:1.5px;
+    classDef imageNode fill:#F0FDF4,stroke:#65A30D,color:#111827,stroke-width:1.5px;
+    classDef topicNode fill:#FFF7ED,stroke:#F97316,color:#111827,stroke-width:1.5px;
+    classDef attentionNode fill:#FFFBEB,stroke:#F59E0B,color:#111827,stroke-width:1.5px;
+    classDef inconsistencyNode fill:#FAF5FF,stroke:#9333EA,color:#111827,stroke-width:1.5px;
+    classDef fusionNode fill:#EFF6FF,stroke:#3B82F6,color:#0F3D91,stroke-width:1.5px;
+    classDef processNode fill:#FFFFFF,stroke:#6B7280,color:#111827,stroke-width:1.2px;
+    classDef outputNode fill:#FFFFFF,stroke:#111827,color:#111827,stroke-width:1.4px;
+    classDef gateNode fill:#FFFFFF,stroke:#111827,color:#111827,stroke-dasharray:5 4;
 
-    B --> B1["Integrated Gradients<br/>Text"]
-    B --> B2["Cross-Attention Map<br/>Image"]
-    B --> B3["Attention Rollout<br/>Image"]
-    B --> B4["Incongruity Heatmap<br/>Image"]
+    class TEXT_IN,TEXT_ENCODER,A_TEXT,B_TEXT,C_TEXT,D_TEXT textNode;
+    class IMAGE_IN,IMAGE_ENCODER,A_IMAGE,B_PATCHES,C_IMAGE,D_PATCHES imageNode;
+    class TOPIC_IN,TOPIC_PROJ,H_TOPIC topicNode;
+    class C_T2I,C_I2T attentionNode;
+    class C_SIM,C_MISMATCH,C_ZINC inconsistencyNode;
+    class A_FUSION,B_FUSION,C_ZT2I,C_ZI2T,C_ZCA,C_ZICAM,D_FUSION,H_FUSION,HD_FUSION fusionNode;
+    class A_CONCAT,A_LINEAR,B_CROSS,B_CONCAT,B_LINEAR,C_CONCAT,C_LINEAR,D_CROSS,D_CONCAT,D_LINEAR,H_CONCAT,H_MLP,H_SOFTMAX,HD_MLP,HD_SOFTMAX processNode;
+    class H_OUTPUT,HD_OUTPUT outputNode;
+    class C_GATE gateNode;
 
-    B1 --> C["Mask High-Attribution Features<br/>10% · 20% · 30%"]
-    B2 --> C
-    B3 --> C
-    B4 --> C
+    style INPUTS fill:#FFFFFF,stroke:#D1D5DB,stroke-width:1px
+    style ENCODERS fill:#FFFFFF,stroke:#D1D5DB,stroke-width:1px
+    style FUSION fill:#FFFFFF,stroke:#D1D5DB,stroke-width:1px
+    style HEADS fill:#FFFFFF,stroke:#D1D5DB,stroke-width:1px
+    style VARIANT_A fill:#FFFFFF,stroke:#2563EB,stroke-width:1.4px
+    style VARIANT_B fill:#FFFFFF,stroke:#2563EB,stroke-width:1.4px
+    style VARIANT_C fill:#FFFFFF,stroke:#2563EB,stroke-width:1.4px
+    style VARIANT_D fill:#FFFFFF,stroke:#2563EB,stroke-width:1.4px
+    style HEAD_ABC fill:#FFFFFF,stroke:#2563EB,stroke-width:1.4px
+    style HEAD_D fill:#FFFFFF,stroke:#2563EB,stroke-width:1.4px
 
-    C --> D["Retrain Model"]
-    D --> E["Measure Macro-F1 Change"]
-    E --> F["Compare with Random Masking"]
-    F --> G["Faithfulness Analysis"]
-    G --> H["Qualitative Cases<br/>TP · TN · FP · FN"]
-```
+Cara membaca alurnya
 
-### Attribution Methods
+Input dan encoding
 
-| Method | Domain | Purpose | ROAR Interpretation |
-|:--|:--|:--|:--|
-| Integrated Gradients | Text | Measures token contribution | More consistent degradation than random masking |
-| Cross-Attention Map | Image | Visualizes text-to-image interaction | Remained close to random baseline |
-| Attention Rollout | Image | Traces attention flow through ViT | Remained close to random baseline |
-| Incongruity Heatmap | Image | Visualizes cross-modal mismatch signals | Diagnostic, but remained close to random baseline |
+Teks diproses oleh IndoBERTweet menjadi token teks dan Text CLS berdimensi 768.
 
-### ROAR Results
+Gambar berukuran 224 × 224 diproses oleh ViT-B/16 menjadi 196 patch token dan Image CLS berdimensi 768.
 
-The values below represent changes in Macro-F1 after masking high-attribution features and retraining the model.
+Vektor topik multi-hot berdimensi 8 diproyeksikan menjadi Topic embedding berdimensi 32.
 
-| Method | Domain | 10% | 20% | 30% |
-|:--|:--|--:|--:|--:|
-| Integrated Gradients | Text | -0.0202 | -0.0354 | -0.0381 |
-| Random baseline | Text | -0.0070 | -0.0221 | -0.0282 |
-| Cross-Attention Map | Image | +0.0029 | -0.0014 | +0.0043 |
-| Attention Rollout | Image | -0.0012 | +0.0033 | +0.0009 |
-| Incongruity Heatmap | Image | +0.0017 | -0.0016 | +0.0036 |
-| Random baseline | Image | +0.0071 | +0.0008 | -0.0007 |
+Pilih satu varian fusion
 
-## Reproducibility
+A — Late Fusion: Text CLS dan Image CLS langsung digabungkan, lalu diproyeksikan menjadi representasi fusion 768.
 
-The ablation study uses three fixed seeds:
+B — Single Cross-Attention: Text CLS menjadi query terhadap image patches. Hasil cross-attention digabungkan kembali dengan Text CLS.
 
-```text
-42, 123, 2024
-```
+C — ICAM: dua arah cross-attention menghasilkan representasi lintas modalitas. Cabang lain menghitung ketidaksesuaian token–patch. Keduanya digabungkan melalui feature-wise gate menjadi Z_ICAM berdimensi 768.
 
-The final ICAM ensemble uses five seeds:
+D — Without Topic: memakai alur cross-attention seperti varian B, tetapi tidak menggunakan topic token maupun topic embedding.
 
-```text
-42, 123, 2024, 7, 999
-```
+Classification head
 
-The validation set is used for model selection and threshold calibration. The official test set remains unchanged for final evaluation.
+Untuk A/B/C, representasi fusion 768 digabungkan dengan topic embedding 32 sehingga menjadi vektor 800. Vektor ini masuk ke MLP 800 → 256 → 2, lalu Softmax menghasilkan kelas hateful atau not hateful.
 
-## Getting Started
+Untuk D, representasi fusion 768 langsung masuk ke MLP 768 → 256 → 2 tanpa topic embedding.
 
-```bash
-git clone https://github.com/<YOUR_USERNAME>/IndoMeme-XAI.git
-cd IndoMeme-XAI
-
-python -m venv .venv
-```
-
-Linux or macOS:
-
-```bash
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-Windows PowerShell:
-
-```powershell
-.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-```
-
-## Research Scope
-
-The reported findings are specific to the INDOMEME dataset, the evaluated fusion configurations, and the selected attribution methods.
-
-ICAM is positioned as a fusion mechanism evaluated in the context of this dataset rather than as a universal architecture for all multimodal tasks.
-
-The results also do not establish topic leakage as definitive causal evidence. Instead, the topic ablation, per-topic label distribution, and Integrated Gradients analysis provide strong indications that the model may exploit topic-label correlations as shortcut learning.
-
-## Future Work
-
-Future research can extend this study through topic-controlled data splits, text-only and image-only baselines, OCR-only and caption-only ablations, topic-only experiments, stronger vision-language models, and human evaluation of XAI usefulness in content moderation.
-
-## Acknowledgments
-
-[INDOMEME](https://huggingface.co/datasets/aiatums/INDOMEME) by Pamungkas et al.
-
-[IndoBERTweet](https://huggingface.co/indolem/indobertweet-base-uncased) by Koto et al.
-
-[Captum](https://captum.ai/) for Integrated Gradients implementation.
-
-[Kaggle](https://www.kaggle.com/) for computational resources.
-
-## License
-
-The source code is distributed under the license specified in [LICENSE](LICENSE).
-
-The accompanying manuscript is licensed under the Creative Commons Attribution 4.0 International License.
+Catatan: A, B, dan C adalah varian eksperimen alternatif. Pada satu eksperimen, hanya satu keluaran fusion yang diteruskan ke classification head A/B/C. Varian D digunakan sebagai ablation untuk mengukur pengaruh informasi topik.
